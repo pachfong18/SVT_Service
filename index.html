@@ -1,83 +1,83 @@
-!DOCTYPE html
-html lang=th
-head
-    meta charset=UTF-8
-    meta name=viewport content=width=device-width, initial-scale=1.0
-    titleSrisuvit Smart Maintenancetitle
-    link rel=stylesheet href=style.css
-    link rel=preconnect href=httpsfonts.googleapis.com
-    link href=httpsfonts.googleapis.comcss2family=Noto+Sans+Thaiwght@300;400;700&display=swap rel=stylesheet
-    link rel=stylesheet href=httpscdnjs.cloudflare.comajaxlibsfont-awesome6.0.0cssall.min.css
-head
-body
-    header
-        div class=logo
-            h1Srisuvit spanMaintenancespanh1
-        div
-        nav
-            button onclick=switchView('home-view')หน้าแรกbutton
-            button onclick=switchView('admin-view') class=btn-outlineฝ่าย IT (Admin)button
-        nav
-    header
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Srisuvit Smart Maintenance</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1>Srisuvit <span>Maintenance</span></h1>
+        </div>
+        <nav>
+            <button onclick="switchView('home-view')">หน้าแรก</button>
+            <button onclick="switchView('admin-view')" class="btn-outline">ฝ่าย IT (Admin)</button>
+        </nav>
+    </header>
 
-    main id=main-content
-        section id=home-view class=view active
-            div class=hero
-                h2ระบบแจ้งซ่อมออนไลน์h2
-                pแจ้งปัญหาอุปกรณ์ชำรุด อาคารสถานที่ ได้อย่างรวดเร็วp
-                div class=status-boxคิวงานรอซ่อม span id=queue-count0span คิวdiv
-                button class=btn-primary btn-large onclick=switchView('report-view')
-                    i class=fas fa-wrenchi แจ้งซ่อมทันที
-                button
-            div
-        section
+    <main id="main-content">
+        <section id="home-view" class="view active">
+            <div class="hero">
+                <h2>ระบบแจ้งซ่อมออนไลน์</h2>
+                <p>แจ้งปัญหาอุปกรณ์ชำรุด อาคารสถานที่ ได้อย่างรวดเร็ว</p>
+                <div class="status-box">คิวงานรอซ่อม: <span id="queue-count">0</span> คิว</div>
+                <button class="btn-primary btn-large" onclick="switchView('report-view')">
+                    <i class="fas fa-wrench"></i> แจ้งซ่อมทันที
+                </button>
+            </div>
+        </section>
 
-        section id=report-view class=view
-            h2ฟอร์มแจ้งซ่อมh2
-            form id=report-form
-                div class=form-group
-                    labelชื่อผู้แจ้งlabel
-                    input type=text id=reporter-name required placeholder=เช่น ครูพัชรกร
-                div
-                div class=form-group
-                    labelอาคาร  ห้องlabel
-                    input type=text id=location required placeholder=เช่น อาคาร 1 ห้อง 102
-                div
-                div class=form-group
-                    labelรายละเอียดอาการlabel
-                    textarea id=details required rows=4 placeholder=อธิบายอาการที่พบ...textarea
-                div
-                div class=form-group
-                    labelแนบรูปภาพlabel
-                    input type=file id=image-file accept=image
-                div
-                button type=submit class=btn-primary id=submit-btnส่งข้อมูลแจ้งซ่อมbutton
-            form
-            div id=loading class=hiddenกำลังอัปโหลดและส่งข้อมูล...div
-        section
+        <section id="report-view" class="view">
+            <h2>ฟอร์มแจ้งซ่อม</h2>
+            <form id="report-form">
+                <div class="form-group">
+                    <label>ชื่อผู้แจ้ง:</label>
+                    <input type="text" id="reporter-name" required placeholder="เช่น ครูพัชรกร">
+                </div>
+                <div class="form-group">
+                    <label>อาคาร / ห้อง:</label>
+                    <input type="text" id="location" required placeholder="เช่น อาคาร 1 ห้อง 102">
+                </div>
+                <div class="form-group">
+                    <label>รายละเอียดอาการ:</label>
+                    <textarea id="details" required rows="4" placeholder="อธิบายอาการที่พบ..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>แนบรูปภาพ:</label>
+                    <input type="file" id="image-file" accept="image/*">
+                </div>
+                <button type="submit" class="btn-primary" id="submit-btn">ส่งข้อมูลแจ้งซ่อม</button>
+            </form>
+            <div id="loading" class="hidden">กำลังอัปโหลดและส่งข้อมูล...</div>
+        </section>
 
-        section id=admin-view class=view
-            h2รายการแจ้งซ่อมทั้งหมดh2
-            div class=table-responsive
-                table id=admin-table
-                    thead
-                        tr
-                            thเวลาแจ้งth
-                            thผู้แจ้งth
-                            thสถานที่th
-                            thอาการth
-                            thรูปภาพth
-                            thผู้รับผิดชอบth
-                            thสถานะth
-                        tr
-                    thead
-                    tbody id=table-body
-                        tbody
-                table
-            div
-        section
-    main
+        <section id="admin-view" class="view">
+            <h2>รายการแจ้งซ่อมทั้งหมด</h2>
+            <div class="table-responsive">
+                <table id="admin-table">
+                    <thead>
+                        <tr>
+                            <th>เวลาแจ้ง</th>
+                            <th>ผู้แจ้ง</th>
+                            <th>สถานที่</th>
+                            <th>อาการ</th>
+                            <th>รูปภาพ</th>
+                            <th>ผู้รับผิดชอบ</th>
+                            <th>สถานะ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
 
-    script type=module src=app.jsscript
-body
-html
+    <script type="module" src="app.js"></script>
+</body>
+</html>
