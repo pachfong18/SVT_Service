@@ -1,0 +1,83 @@
+!DOCTYPE html
+html lang=th
+head
+    meta charset=UTF-8
+    meta name=viewport content=width=device-width, initial-scale=1.0
+    titleSrisuvit Smart Maintenancetitle
+    link rel=stylesheet href=style.css
+    link rel=preconnect href=httpsfonts.googleapis.com
+    link href=httpsfonts.googleapis.comcss2family=Noto+Sans+Thaiwght@300;400;700&display=swap rel=stylesheet
+    link rel=stylesheet href=httpscdnjs.cloudflare.comajaxlibsfont-awesome6.0.0cssall.min.css
+head
+body
+    header
+        div class=logo
+            h1Srisuvit spanMaintenancespanh1
+        div
+        nav
+            button onclick=switchView('home-view')หน้าแรกbutton
+            button onclick=switchView('admin-view') class=btn-outlineฝ่าย IT (Admin)button
+        nav
+    header
+
+    main id=main-content
+        section id=home-view class=view active
+            div class=hero
+                h2ระบบแจ้งซ่อมออนไลน์h2
+                pแจ้งปัญหาอุปกรณ์ชำรุด อาคารสถานที่ ได้อย่างรวดเร็วp
+                div class=status-boxคิวงานรอซ่อม span id=queue-count0span คิวdiv
+                button class=btn-primary btn-large onclick=switchView('report-view')
+                    i class=fas fa-wrenchi แจ้งซ่อมทันที
+                button
+            div
+        section
+
+        section id=report-view class=view
+            h2ฟอร์มแจ้งซ่อมh2
+            form id=report-form
+                div class=form-group
+                    labelชื่อผู้แจ้งlabel
+                    input type=text id=reporter-name required placeholder=เช่น ครูพัชรกร
+                div
+                div class=form-group
+                    labelอาคาร  ห้องlabel
+                    input type=text id=location required placeholder=เช่น อาคาร 1 ห้อง 102
+                div
+                div class=form-group
+                    labelรายละเอียดอาการlabel
+                    textarea id=details required rows=4 placeholder=อธิบายอาการที่พบ...textarea
+                div
+                div class=form-group
+                    labelแนบรูปภาพlabel
+                    input type=file id=image-file accept=image
+                div
+                button type=submit class=btn-primary id=submit-btnส่งข้อมูลแจ้งซ่อมbutton
+            form
+            div id=loading class=hiddenกำลังอัปโหลดและส่งข้อมูล...div
+        section
+
+        section id=admin-view class=view
+            h2รายการแจ้งซ่อมทั้งหมดh2
+            div class=table-responsive
+                table id=admin-table
+                    thead
+                        tr
+                            thเวลาแจ้งth
+                            thผู้แจ้งth
+                            thสถานที่th
+                            thอาการth
+                            thรูปภาพth
+                            thผู้รับผิดชอบth
+                            thสถานะth
+                        tr
+                    thead
+                    tbody id=table-body
+                        tbody
+                table
+            div
+        section
+    main
+
+    script type=module src=app.jsscript
+body
+html
