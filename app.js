@@ -141,7 +141,68 @@ onSnapshot(q, (snapshot) => {
         `;
         tbody.appendChild(tr);
     });
+// --- เพิ่มส่วนนี้ต่อจาก onSnapshot เดิมที่มีอยู่ (หรือรวมกันก็ได้) ---
 
+onSnapshot(q, (snapshot) => {
+    const adminTbody = document.getElementById('table-body');
+    const homeTbody = document.getElementById('home-table-body'); // ตารางหน้าแรก
+    
+    adminTbody.innerHTML = "";
+    homeTbody.innerHTML = ""; // ล้างข้อมูลเก่าหน้าแรก
+    let activeQueueCount = 0;
+
+    snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const id = docSnap.id;
+        const timeStr = data.timestamp ? data.timestamp.toDate().toLocaleString('th-TH') : "รอระบบ...";
+        
+        // กรองเฉพาะงานที่ยังไม่เสร็จเพื่อโชว์หน้าแรก
+        if(data.status !== "แจ้งซ่อมสำเร็จ") {
+            activeQueueCount++;
+            
+            const homeTr = document.createElement('tr');
+            homeTr.innerHTML = `
+                <td>${timeStr}</td>
+                <td>${data.reporterName}</td>
+                <td>${data.location}</td>
+                <td>${data.details}</td>
+                <td><span class="status-pill" style="background:${getStatusColor(data.status)}">${data.status}</span></td>
+            `;
+            homeTbody.appendChild(homeTr);
+        }
+
+        // ส่วนของหน้า Admin (ปรับให้โชว์รูป)
+        const adminTr = document.createElement('tr');
+        // เปลี่ยนลิงก์ Drive ให้เป็นรูปแบบที่แสดงผลในเว็บได้
+        let displayImage = "-";
+        if(data.imageUrl) {
+            const fileId = data.imageUrl.split('id=')[1];
+            // ใช้ URL นี้เพื่อให้แสดงภาพใน <img> tag ได้
+            const directLink = `https://lh3.googleusercontent.com/d/${fileId}`;
+            displayImage = `<img src="${directLink}" style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${data.imageUrl}')">`;
+        }
+
+        adminTr.innerHTML = `
+            <td>${timeStr}</td>
+            <td>${data.reporterName}</td>
+            <td>${data.location}</td>
+            <td>${data.details}</td>
+            <td>${displayImage}</td>
+            <td><input type="text" class="assignee-input" value="${data.assignee || ''}" onchange="updateAssignee('${id}', this.value)"></td>
+            <td>
+                <select onchange="updateStatus('${id}', this.value)" style="background:${getStatusColor(data.status)}; color:white; border:none; border-radius:4px;">
+                    <option value="รอรับแจ้ง" ${data.status === 'รอรับแจ้ง' ? 'selected' : ''}>รอรับแจ้ง</option>
+                    <option value="กำลังดำเนินการ" ${data.status === 'กำลังดำเนินการ' ? 'selected' : ''}>กำลังดำเนินการ</option>
+                    <option value="รอสั่งอุปกรณ์" ${data.status === 'รอสั่งอุปกรณ์' ? 'selected' : ''}>รอสั่งอุปกรณ์</option>
+                    <option value="แจ้งซ่อมสำเร็จ" ${data.status === 'แจ้งซ่อมสำเร็จ' ? 'selected' : ''}>แจ้งซ่อมสำเร็จ</option>
+                </select>
+            </td>
+        `;
+        adminTbody.appendChild(adminTr);
+    });
+
+    document.getElementById('queue-count').innerText = activeQueueCount;
+});
     document.getElementById('queue-count').innerText = activeQueueCount;
 });
 
