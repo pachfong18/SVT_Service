@@ -1,6 +1,5 @@
-// นำเข้า Firebase SDK
-import { initializeApp } from "[https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js](https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js)";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, serverTimestamp } from "[https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js](https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js)";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // 1. ใส่ Config ของ Firebase (เอามาจาก Firebase Console)
 const firebaseConfig = {
