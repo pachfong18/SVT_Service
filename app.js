@@ -1,7 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-// 1. ใส่ Config ของ Firebase (เอามาจาก Firebase Console)
 const firebaseConfig = {
   apiKey: "AIzaSyAmJP_wzYRAR6VnPDPtDMUBURFThphlWvo",
   authDomain: "svt-service.firebaseapp.com",
@@ -12,20 +11,26 @@ const firebaseConfig = {
   measurementId: "G-Z6CEY0RED2"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 2. ตั้งค่า Webhook URL จาก Google Apps Script
-const GAS_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzegXJFsK9xfZVBfUQxYNMsfEdEWTgs511uOFN45yVq2f7Hu3aoxikB0QMr4jJQqd4q/exec"; 
+// วางลิงก์ GAS ของคุณตรงนี้
+const GAS_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzegXJFsK9xfZVBfUQxYNMsfEdEWTgs511uOFN45yVq2f7Hu3aoxikB/exec";
 
-// --- การเปลี่ยนหน้า (Routing) ---
+// ระบบสลับหน้า + เช็ครหัสผ่าน
 window.switchView = function(viewId) {
+    if (viewId === 'admin-view') {
+        const password = prompt("กรุณากรอกรหัสผ่านฝ่าย IT:");
+        if (password !== "SVTIT") {
+            alert("รหัสผ่านไม่ถูกต้อง!");
+            return;
+        }
+    }
     document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
     document.getElementById(viewId).classList.add('active');
 };
 
-// --- การส่งข้อมูลแจ้งซ่อม ---
+// ส่งข้อมูล
 document.getElementById('report-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('submit-btn');
@@ -35,190 +40,87 @@ document.getElementById('report-form').addEventListener('submit', async (e) => {
     loading.classList.remove('hidden');
 
     const name = document.getElementById('reporter-name').value;
-    const location = document.getElementById('location').value;
+    const building = document.getElementById('building').value;
+    const floor = document.getElementById('floor').value;
+    const room = document.getElementById('room').value;
+    const fullLoc = `อาคาร ${building} ชั้น ${floor} ห้อง ${room}`;
     const details = document.getElementById('details').value;
     const fileInput = document.getElementById('image-file');
     
     let imageUrl = "";
-
-    try {
-        // หากมีรูปภาพ ให้ส่งไปที่ GAS ก่อน
-        if (fileInput.files.length > 0) {
-            const file = fileInput.files[0];
-            const base64 = await getBase64(file);
-            
-            const payload = {
-                filename: file.name,
-                mimeType: file.type,
-                base64: base64.split('base64,')[1],
-                name: name,
-                location: location,
-                details: details
-            };
-
-            const response = await fetch(GAS_WEBHOOK_URL, {
-                method: "POST",
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json();
-            if(result.url) imageUrl = result.url;
-        } else {
-            // ถ่ายิงแจ้งเตือนผ่าน GAS แบบไม่มีรูป
-            fetch(GAS_WEBHOOK_URL, {
-                method: "POST",
-                body: JSON.stringify({ name, location, details, noImage: true })
-            });
-        }
-
-        // บันทึกลง Firestore
-        await addDoc(collection(db, "maintenance_requests"), {
-            reporterName: name,
-            location: location,
-            details: details,
-            imageUrl: imageUrl,
-            status: "รอรับแจ้ง",
-            assignee: "",
-            timestamp: serverTimestamp()
+    if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const base64 = await toBase64(file);
+        const res = await fetch(GAS_WEBHOOK_URL, {
+            method: "POST",
+            body: JSON.stringify({
+                name: name, location: fullLoc, details: details,
+                base64: base64.split(',')[1], mimeType: file.type, filename: file.name
+            })
         });
-
-        alert("แจ้งซ่อมสำเร็จ!");
-        document.getElementById('report-form').reset();
-        switchView('home-view');
-        
-    } catch (error) {
-        console.error("Error:", error);
-        alert("เกิดข้อผิดพลาดในการส่งข้อมูล");
-    } finally {
-        btn.disabled = false;
-        loading.classList.add('hidden');
+        const json = await res.json();
+        imageUrl = json.url;
+    } else {
+        fetch(GAS_WEBHOOK_URL, {
+            method: "POST",
+            body: JSON.stringify({ name, location: fullLoc, details, noImage: true })
+        });
     }
+
+    await addDoc(collection(db, "maintenance_requests"), {
+        reporterName: name, location: fullLoc, details,
+        imageUrl, status: "รอรับแจ้ง", assignee: "", timestamp: serverTimestamp()
+    });
+
+    alert("แจ้งซ่อมสำเร็จ!");
+    location.reload();
 });
 
-// แปลงไฟล์เป็น Base64
-function getBase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-    });
-}
-
-// --- ดึงข้อมูลลงตาราง Admin (Real-time) ---
+// ดึงข้อมูลแสดงผล
 const q = query(collection(db, "maintenance_requests"), orderBy("timestamp", "desc"));
 onSnapshot(q, (snapshot) => {
-    const tbody = document.getElementById('table-body');
-    tbody.innerHTML = "";
-    let activeQueueCount = 0;
-
-    snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        const id = docSnap.id;
-        const timeStr = data.timestamp ? data.timestamp.toDate().toLocaleString('th-TH') : "กำลังบันทึก...";
-        
-        if(data.status !== "แจ้งซ่อมสำเร็จ") activeQueueCount++;
-
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${timeStr}</td>
-            <td>${data.reporterName}</td>
-            <td>${data.location}</td>
-            <td>${data.details}</td>
-            <td>${data.imageUrl ? `<a href="${data.imageUrl}" target="_blank" style="color:var(--gold);">ดูรูปภาพ</a>` : "-"}</td>
-            <td>
-                <input type="text" class="assignee-input" value="${data.assignee}" placeholder="ระบุผู้รับผิดชอบ" 
-                    onchange="updateAssignee('${id}', this.value)">
-            </td>
-            <td>
-                <select onchange="updateStatus('${id}', this.value)" style="
-                    background-color: ${getStatusColor(data.status)}; color: white; border: none;">
-                    <option value="รอรับแจ้ง" ${data.status === 'รอรับแจ้ง' ? 'selected' : ''}>รอรับแจ้ง</option>
-                    <option value="กำลังดำเนินการ" ${data.status === 'กำลังดำเนินการ' ? 'selected' : ''}>กำลังดำเนินการ</option>
-                    <option value="รอสั่งอุปกรณ์" ${data.status === 'รอสั่งอุปกรณ์' ? 'selected' : ''}>รอสั่งอุปกรณ์</option>
-                    <option value="แจ้งซ่อมสำเร็จ" ${data.status === 'แจ้งซ่อมสำเร็จ' ? 'selected' : ''}>แจ้งซ่อมสำเร็จ</option>
-                </select>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-// --- เพิ่มส่วนนี้ต่อจาก onSnapshot เดิมที่มีอยู่ (หรือรวมกันก็ได้) ---
-
-onSnapshot(q, (snapshot) => {
     const adminTbody = document.getElementById('table-body');
-    const homeTbody = document.getElementById('home-table-body'); // ตารางหน้าแรก
-    
-    adminTbody.innerHTML = "";
-    homeTbody.innerHTML = ""; // ล้างข้อมูลเก่าหน้าแรก
-    let activeQueueCount = 0;
+    const homeTbody = document.getElementById('home-table-body');
+    adminTbody.innerHTML = ""; homeTbody.innerHTML = "";
+    let count = 0;
 
-    snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
+    snapshot.forEach(docSnap => {
+        const d = docSnap.data();
         const id = docSnap.id;
-        const timeStr = data.timestamp ? data.timestamp.toDate().toLocaleString('th-TH') : "รอระบบ...";
-        
-        // กรองเฉพาะงานที่ยังไม่เสร็จเพื่อโชว์หน้าแรก
-        if(data.status !== "แจ้งซ่อมสำเร็จ") {
-            activeQueueCount++;
-            
-            const homeTr = document.createElement('tr');
-            homeTr.innerHTML = `
-                <td>${timeStr}</td>
-                <td>${data.reporterName}</td>
-                <td>${data.location}</td>
-                <td>${data.details}</td>
-                <td><span class="status-pill" style="background:${getStatusColor(data.status)}">${data.status}</span></td>
-            `;
-            homeTbody.appendChild(homeTr);
+        const time = d.timestamp ? d.timestamp.toDate().toLocaleString('th-TH') : "...";
+
+        if(d.status !== "แจ้งซ่อมสำเร็จ") {
+            count++;
+            homeTbody.innerHTML += `<tr><td>${time}</td><td>${d.reporterName}</td><td>${d.location}</td><td>${d.details}</td><td>${d.status}</td></tr>`;
         }
 
-        // ส่วนของหน้า Admin (ปรับให้โชว์รูป)
-        const adminTr = document.createElement('tr');
-        // เปลี่ยนลิงก์ Drive ให้เป็นรูปแบบที่แสดงผลในเว็บได้
-        let displayImage = "-";
-        if(data.imageUrl) {
-            const fileId = data.imageUrl.split('id=')[1];
-            // ใช้ URL นี้เพื่อให้แสดงภาพใน <img> tag ได้
-            const directLink = `https://lh3.googleusercontent.com/d/${fileId}`;
-            displayImage = `<img src="${directLink}" style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer;" onclick="window.open('${data.imageUrl}')">`;
-        }
+        let imgHtml = d.imageUrl ? `<img src="${d.imageUrl.replace('open?', 'uc?export=view&')}" style="width:50px; cursor:pointer;" onclick="window.open('${d.imageUrl}')">` : "-";
 
-        adminTr.innerHTML = `
-            <td>${timeStr}</td>
-            <td>${data.reporterName}</td>
-            <td>${data.location}</td>
-            <td>${data.details}</td>
-            <td>${displayImage}</td>
-            <td><input type="text" class="assignee-input" value="${data.assignee || ''}" onchange="updateAssignee('${id}', this.value)"></td>
-            <td>
-                <select onchange="updateStatus('${id}', this.value)" style="background:${getStatusColor(data.status)}; color:white; border:none; border-radius:4px;">
-                    <option value="รอรับแจ้ง" ${data.status === 'รอรับแจ้ง' ? 'selected' : ''}>รอรับแจ้ง</option>
-                    <option value="กำลังดำเนินการ" ${data.status === 'กำลังดำเนินการ' ? 'selected' : ''}>กำลังดำเนินการ</option>
-                    <option value="รอสั่งอุปกรณ์" ${data.status === 'รอสั่งอุปกรณ์' ? 'selected' : ''}>รอสั่งอุปกรณ์</option>
-                    <option value="แจ้งซ่อมสำเร็จ" ${data.status === 'แจ้งซ่อมสำเร็จ' ? 'selected' : ''}>แจ้งซ่อมสำเร็จ</option>
-                </select>
-            </td>
-        `;
-        adminTbody.appendChild(adminTr);
+        adminTbody.innerHTML += `
+            <tr>
+                <td>${time}</td>
+                <td>${d.reporterName}</td>
+                <td>${d.location}</td>
+                <td>${d.details}</td>
+                <td>${imgHtml}</td>
+                <td><input type="text" value="${d.assignee||''}" onchange="updateAssignee('${id}', this.value)"></td>
+                <td>
+                    <select onchange="updateStatus('${id}', this.value)">
+                        <option value="รอรับแจ้ง" ${d.status==='รอรับแจ้ง'?'selected':''}>รอรับแจ้ง</option>
+                        <option value="กำลังดำเนินการ" ${d.status==='กำลังดำเนินการ'?'selected':''}>กำลังดำเนินการ</option>
+                        <option value="แจ้งซ่อมสำเร็จ" ${d.status==='แจ้งซ่อมสำเร็จ'?'selected':''}>แจ้งซ่อมสำเร็จ</option>
+                    </select>
+                </td>
+                <td><button onclick="deleteReq('${id}')" style="background:red; color:white; border:none; padding:5px; border-radius:4px;">ลบ</button></td>
+            </tr>`;
     });
-
-    document.getElementById('queue-count').innerText = activeQueueCount;
-});
-    document.getElementById('queue-count').innerText = activeQueueCount;
+    document.getElementById('queue-count').innerText = count;
 });
 
-// ฟังก์ชันช่วยเหลือตาราง Admin
-window.updateStatus = async function(id, newStatus) {
-    await updateDoc(doc(db, "maintenance_requests", id), { status: newStatus });
-};
-
-window.updateAssignee = async function(id, newAssignee) {
-    await updateDoc(doc(db, "maintenance_requests", id), { assignee: newAssignee });
-};
-
-function getStatusColor(status) {
-    if(status === 'รอรับแจ้ง') return '#dc3545'; // แดง
-    if(status === 'กำลังดำเนินการ') return '#007bff'; // น้ำเงิน
-    if(status === 'รอสั่งอุปกรณ์') return '#ffc107'; // เหลือง (ตัวอักษรอาจต้องเข้ม)
-    if(status === 'แจ้งซ่อมสำเร็จ') return '#28a745'; // เขียว
-    return 'gray';
-}
+window.updateStatus = (id, s) => updateDoc(doc(db, "maintenance_requests", id), {status: s});
+window.updateAssignee = (id, a) => updateDoc(doc(db, "maintenance_requests", id), {assignee: a});
+window.deleteReq = (id) => confirm("ลบข้อมูลนี้?") && deleteDoc(doc(db, "maintenance_requests", id));
+const toBase64 = file => new Promise((res, rej) => {
+    const reader = new FileReader(); reader.readAsDataURL(file);
+    reader.onload = () => res(reader.result); reader.onerror = rej;
+});
